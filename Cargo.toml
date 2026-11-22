@@ -1,8 +1,10 @@
 [package]
 name = "lotus-matrix-l-config"
-version = "0.1.0-beta"
+version = "0.1.0-alpha"
 edition = "2024"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/teneberus/lotus-matrix-l-config"
 
 [dependencies]
+serde = { version = "1.0.229", features = ["derive"] }
+toml = "1.2.2"
