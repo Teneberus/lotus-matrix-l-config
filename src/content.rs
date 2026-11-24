@@ -1,16 +1,23 @@
+//! The content for [`crate::group::Group::local_line_content`],
+//! [`crate::group::Group::local_line_e_content`] and for the local destination
+//! content in the station strings of the special pis.
+
 use serde::{Deserialize, Serialize};
 use serde_with::{DisplayFromStr, serde_as};
 use std::{cmp::max, collections::HashMap, fmt::Display};
 
+/// This is the main struct for the display content.
 #[serde_as]
 #[derive(Clone, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(default)]
 pub struct Content {
+    /// An address contains all content for the display with this address.
     #[serde_as(as = "HashMap<DisplayFromStr, _>")]
     pub address: HashMap<usize, Address>,
 }
 
 impl Content {
+    /// Wrapper for `toml::from_str()`.
     pub fn from_toml_str<'de, T>(s: &'de str) -> Result<T, toml::de::Error>
     where
         T: serde::de::Deserialize<'de>,
@@ -18,6 +25,7 @@ impl Content {
         toml::from_str(s)
     }
 
+    /// Wrapper for `toml::from_slice()`.
     pub fn from_toml_slice<'de, T>(s: &'de [u8]) -> Result<T, toml::de::Error>
     where
         T: serde::de::Deserialize<'de>,
@@ -26,10 +34,15 @@ impl Content {
     }
 }
 
+/// An address contains all content for the display with this address.
 #[derive(Clone, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(default)]
 pub struct Address {
+    /// Display inversion. Is used together with [`Cycle::inverted`] as
+    /// `address.inverted ^ cycle.inverted`.
     pub inverted: bool,
+    /// List of cycles. Static content has exactly one cycle.
+    /// With more than on cycle, the display loops through all cycles.
     pub cycles: Vec<Cycle>,
 }
 
@@ -71,60 +84,107 @@ impl Address {
     }
 }
 
+/// One display cycle. The display loops through the cycles.
 #[derive(Clone, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(default)]
 pub struct Cycle {
+    /// Display inversion of this cycle. The effective inversion also depends on
+    /// [`Address::inverted`].
     pub inverted: bool,
+    /// Elements can be locked ([`Position::locked`]).
+    /// In that case they are visible on all following cycles until this
+    /// parameter here is set to true.
+    /// Locked elements from previous cycles are not part of this cylce if this
+    /// parameter is true.
+    /// Elements, that are originally part of this cycle and are locked, are
+    /// visible on this cycle and the following cycles.
     pub release_locks: bool,
+    /// Background color of the RGB field.
     pub color: Option<Color>,
+    /// List of elements that are added to this cycle. They can be locked
+    /// ([`Position::locked`]), if they should be visible on following cycles
+    /// too.
     pub elements: Vec<Element>,
 }
 
+/// Contains references to all elements of a cycle after processing the `locked`
+/// and `release_locks` parameters (created with [`Address::expanded_cycles()`]).
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ExpandedCycle<'a> {
+    /// Effective inversion of the display.
     pub inverted: bool,
+    /// Background color of the RGB field.
     pub color: Option<Color>,
+    /// References to all elements that are visible on this cycle.
     pub elements: Vec<&'a Element>,
 }
 
+/// Various elements with properties, that are positioned on the display.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub enum Element {
+    /// The text element writes a string with font, spacing, position, optional
+    /// scroll values and some optional color parameters in case of RGB fields.
     #[serde(rename = "text")]
     Text {
         value: String,
+        /// The font needs to exists in the font list in [`crate::group::Group`].
         #[serde(default)]
-        font_index: usize,
+        font: usize,
         #[serde(default)]
         spacing: i32,
+        /// Position (upper left corner).
         #[serde(default)]
         position: Position,
-        frame: Option<TextFrame>,
+        /// Colored text stroke. Ignored, if scroll_field is Some.
+        /// Only visible inside of RGB fields.
+        stroke: Option<TextStroke>,
+        /// Text color. Ignored, if scroll_field is Some.
+        /// Only applied inside of RGB fields.
         color: Option<Color>,
+        /// Scroll field with width, direction and speed.
+        /// If this is not None, stroke and color will be ignored.
         scroll_field: Option<ScrollField>,
     },
+    /// The rectangle element draws an empty rectangle with a given line width.
     #[serde(rename = "rectangle")]
     Rectangle {
+        /// Outer width.
         #[serde(default)]
         width: u32,
+        /// Outer height.
         #[serde(default)]
         height: u32,
+        /// Border width.
         #[serde(default)]
         line_width: u32,
+        /// Position (upper left corner).
         #[serde(default)]
         position: Position,
+        /// Color. Only applied inside of RGB fields.
         color: Option<Color>,
     },
+    /// The bitmap element places a bitmap at the given position.
+    /// Only works in RGB fields.
     #[serde(rename = "bitmap")]
     Bitmap {
+        /// Index of the bitmap.
+        /// Accesses an ASCII char in the [`crate::group::Lotus::bitmap_font`]
+        /// calculated as (`0x20 + index`).
         #[serde(default)]
         index: usize,
+        /// Position (upper left corner).
         #[serde(default)]
         position: Position,
     },
 }
 
-// common
-
+/// Position of Elements.
+///
+/// The alignment parameters are placeholders for any graphical editors that
+/// might be implemented later. They are not used by the displays.
+///
+/// Elements can be locked. In that case the are displayed on all following
+/// cycles including the last one before the next cylce that releases all locks.
 #[derive(Clone, Copy, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(default)]
 pub struct Position {
@@ -186,6 +246,8 @@ impl Position {
     }
 }
 
+/// Placeholder for any graphical editors that might be implemented later.
+/// It is not used by the displays.
 #[derive(Clone, Copy, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
 pub enum HorizontalAlignment {
     #[default]
@@ -214,6 +276,8 @@ impl Display for HorizontalAlignment {
     }
 }
 
+/// Placeholder for any graphical editors that might be implemented later.
+/// It is not used by the displays.
 #[derive(Clone, Copy, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
 pub enum VerticalAlignment {
     #[default]
@@ -234,6 +298,7 @@ impl Display for VerticalAlignment {
     }
 }
 
+/// Color for various elements with red, green and blue values.
 #[derive(Clone, Copy, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(default)]
 pub struct Color {
@@ -248,22 +313,32 @@ impl Display for Color {
     }
 }
 
+/// Colored text stroke.
+///
+/// Currently I have no idea for a performance friendly implementation in LOTUS.
 #[derive(Clone, Copy, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(default)]
-pub struct TextFrame {
+pub struct TextStroke {
     pub width: u32,
     pub color: Color,
 }
 
+/// Width, direction and speed of scroll field
 #[derive(Clone, Copy, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(default)]
 pub struct ScrollField {
+    /// Width of the scroll field.
+    /// The height is taken from the text itself.
     pub width: u32,
-    pub height: u32,
     pub direction: Direction,
+    /// Delay in centiseconds (cs) per column.
+    ///
+    /// Example: `delay = 2` is a delay of 20ms, which is a scroll speed of
+    /// 50 columns per second.
     pub delay: u32,
 }
 
+/// Direction of scroll text.
 #[derive(Clone, Copy, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
 pub enum Direction {
     #[default]
