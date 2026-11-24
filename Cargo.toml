@@ -8,4 +8,5 @@ description = "Configuration structure including a few helper functions for LOTU
 
 [dependencies]
 serde = { version = "1.0.229", features = ["derive"] }
+serde_with = "3.25.0"
 toml = "1.2.2"

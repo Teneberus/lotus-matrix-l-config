@@ -1,11 +1,13 @@
+use serde::{Deserialize, Serialize};
+use serde_with::{DisplayFromStr, serde_as};
 use std::{cmp::max, collections::HashMap, fmt::Display};
 
-use serde::{Deserialize, Serialize};
-
+#[serde_as]
 #[derive(Clone, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(default)]
 pub struct Content {
-    pub address: HashMap<String, Address>,
+    #[serde_as(as = "HashMap<DisplayFromStr, _>")]
+    pub address: HashMap<usize, Address>,
 }
 
 impl Content {

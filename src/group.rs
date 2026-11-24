@@ -1,23 +1,28 @@
-use std::{collections::HashMap, str::FromStr};
-
 use serde::{Deserialize, Serialize};
+use serde_with::{DisplayFromStr, serde_as};
+use std::{collections::HashMap, str::FromStr};
 
 use crate::content::Content;
 
+#[serde_as]
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 #[serde(default)]
 pub struct Group {
     pub lotus: Lotus,
     pub system: System,
     pub general: General,
-    pub font: HashMap<String, Font>,
-    pub display: HashMap<String, Display>,
+    #[serde_as(as = "HashMap<DisplayFromStr, _>")]
+    pub font: HashMap<usize, Font>,
+    #[serde_as(as = "HashMap<DisplayFromStr, _>")]
+    pub display: HashMap<usize, Display>,
     pub change_word_list: Option<Vec<(String, String)>>,
     pub line_list: Option<Vec<(String, String)>>,
     pub special_char_list: Option<Vec<(String, String)>>,
     pub startup_content: Option<Content>,
-    pub line_content: Option<HashMap<String, Content>>,
-    pub line_e_content: Option<HashMap<String, Content>>,
+    #[serde_as(as = "Option<HashMap<DisplayFromStr, _>>")]
+    pub line_content: Option<HashMap<usize, Content>>,
+    #[serde_as(as = "Option<HashMap<DisplayFromStr, _>>")]
+    pub line_e_content: Option<HashMap<usize, Content>>,
 }
 
 impl Default for Group {
@@ -26,7 +31,7 @@ impl Default for Group {
             lotus: Default::default(),
             system: Default::default(),
             general: Default::default(),
-            font: HashMap::from([("0".to_string(), Default::default())]),
+            font: HashMap::from([(0, Default::default())]),
             display: Default::default(),
             change_word_list: Default::default(),
             line_list: Default::default(),
