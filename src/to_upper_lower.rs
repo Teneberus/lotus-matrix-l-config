@@ -31,12 +31,12 @@ impl Default for ToUpperLowerConfig {
         Self {
             trim_leading_spaces: false,
             trim_trailing_spaces: true,
-            start_with_uppercase: [true, false],
+            start_with_uppercase: [false, false],
             convert_first_chars: false,
             lowercase_marker: None,
             uppercase_marker: None,
-            word_delimiters: vec![' ', '/', '-', '+', '!', '.', '\r', '>', '<'],
-            change_word_boundaries: vec![' ', '/', '-', '(', ',', '.', '\n'],
+            word_delimiters: vec![' ', '/', '-', '(', ',', '.', ';'],
+            change_word_boundaries: vec![' ', '/', '-', '(', ',', '.'],
         }
     }
 }
