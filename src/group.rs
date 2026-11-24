@@ -57,6 +57,40 @@ impl Group {
     {
         toml::from_slice(s)
     }
+
+    /// Returns the destination shift to the left for local destination data.
+    ///
+    /// `self.system.destination_shift = false` or `self.system.local_data = false` results in a shift of 0.
+    /// A nonexistent display address or a nonexistent font also return 0.
+    pub fn get_destination_shift(
+        &self,
+        line_width_px: u32,
+        line_char_count: usize,
+        display_address: usize,
+    ) -> u32 {
+        if !self.system.destination_shift || !self.system.local_data {
+            return 0;
+        }
+
+        let Some(display) = self.display.get(&display_address) else {
+            return 0;
+        };
+
+        let Some(font) = self.font.get(&display.line.font) else {
+            return 0;
+        };
+
+        let default_width = self.general.default_line_digit_count * font.zero_width
+            + (self.general.default_line_digit_count - 1)
+                * display.line.spacing[line_char_count.saturating_sub(1) & 3]
+            + display.line.offset
+                [(self.general.default_line_digit_count as usize).saturating_sub(1) & 3];
+
+        default_width
+            .saturating_sub(line_width_px)
+            .saturating_sub(1)
+            / 2
+    }
 }
 
 #[derive(Clone, Copy, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
@@ -104,6 +138,7 @@ pub struct General {
     pub max_spacing: u32,
     pub ibis_timeout: f32,
     pub convert_chars: bool,
+    pub default_line_digit_count: u32,
 }
 
 impl Default for General {
@@ -114,6 +149,7 @@ impl Default for General {
             max_spacing: 3,
             ibis_timeout: 120.0,
             convert_chars: false,
+            default_line_digit_count: 3,
         }
     }
 }
@@ -200,7 +236,9 @@ pub struct DisplayLine {
     pub suppress: bool,
     pub font: usize,
     pub place: LinePlace,
+    /// Offset for 1, 2, 3, 4 line digits.
     pub offset: [u32; 4],
+    /// Spacing for 1, 2, 3, 4 line digits. First value should be 0.
     pub spacing: [u32; 4],
 }
 
