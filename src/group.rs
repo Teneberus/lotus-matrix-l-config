@@ -12,9 +12,9 @@ pub struct Group {
     pub general: General,
     pub font: HashMap<String, Font>,
     pub display: HashMap<String, Display>,
-    pub change_word_list: Option<HashMap<String, String>>,
-    pub line_list: Option<HashMap<String, String>>,
-    pub special_char_list: Option<HashMap<String, String>>,
+    pub change_word_list: Option<Vec<(String, String)>>,
+    pub line_list: Option<Vec<(String, String)>>,
+    pub special_char_list: Option<Vec<(String, String)>>,
     pub startup_content: Option<Content>,
     pub line_content: Option<HashMap<String, Content>>,
     pub line_e_content: Option<HashMap<String, Content>>,
@@ -70,31 +70,7 @@ pub struct System {
     pub destination_shift: bool,
     pub line_fallback: bool,
     pub destination_fallback: bool,
-    pub text_config: UpperLowerConfig,
-}
-
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
-#[serde(default)]
-pub struct UpperLowerConfig {
-    pub trim_leading_spaces: bool,
-    pub trim_trailing_spaces: bool,
-    pub start_with_uppercase: [bool; 2],
-    pub convert_first_chars: bool,
-    pub delimiters: Vec<char>,
-    pub secondary_delimiters: Vec<char>,
-}
-
-impl Default for UpperLowerConfig {
-    fn default() -> Self {
-        Self {
-            trim_leading_spaces: false,
-            trim_trailing_spaces: true,
-            start_with_uppercase: [true, false],
-            convert_first_chars: true,
-            delimiters: vec![' ', '!', '+', '-', '.', '/', '<', '>'],
-            secondary_delimiters: vec![' ', '(', ',', '-', '.', '/'],
-        }
-    }
+    pub upper_lower_config: crate::ToUpperLowerConfig,
 }
 
 #[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize)]
