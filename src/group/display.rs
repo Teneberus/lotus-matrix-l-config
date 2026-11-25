@@ -50,17 +50,24 @@ pub struct Color {
 #[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(default)]
 pub struct Line {
-    /// Suppress the line number on the display. Only the destination text is displayed.
+    /// Suppress the line number on the display. Only the destination text is
+    /// displayed.
     pub suppress: bool,
-    /// Line number font. The font needs to exists in the font list in [`crate::group::Group`].
+    /// Line number font. The font needs to exists in the font list in
+    /// [`crate::group::Group`].
     pub font: usize,
-    /// Optional fallback font, in case the line number does not fit with `font`.
-    pub fallback_font: Option<usize>,
+    /// Optional alternative font in case the line number does not fit with
+    /// `font`.
+    /// Only if [`super::Lotus::local_data`] is false or
+    /// [`super::System::allow_fallback`] is true and a fallback is active or if
+    /// the destination is in the [`super::System::dynamic_range`].
+    pub alternative_font: Option<usize>,
     /// Position of the line number.
     pub place: LinePlace,
     /// Offset for line numbers with 1, 2, 3, 4 digits.
     pub offset: [u32; 4],
-    /// Spacing for line numbers with 1, 2, 3, 4 digits. First value should be 0.
+    /// Spacing for line numbers with 1, 2, 3, 4 digits. First value should be
+    /// 0.
     pub spacing: [u32; 4],
 }
 
@@ -69,7 +76,7 @@ impl Default for Line {
         Self {
             suppress: false,
             font: 0,
-            fallback_font: None,
+            alternative_font: None,
             place: Default::default(),
             offset: [3, 2, 1, 1],
             spacing: [0, 2, 1, 1],

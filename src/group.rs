@@ -4,7 +4,7 @@ pub mod display;
 
 use serde::{Deserialize, Serialize};
 use serde_with::{DisplayFromStr, serde_as};
-use std::collections::HashMap;
+use std::{collections::HashMap, ops::Range};
 
 use crate::content::Content;
 
@@ -160,15 +160,18 @@ pub struct System {
     /// number is smaller than the default width.
     /// Default: false.
     pub destination_shift: bool,
-    /// With `lotus.local_data = true` this enables the fallback to default line
-    /// strings, if no local line content is found for the received line number.
-    /// Default: true.
-    pub line_fallback: bool,
     /// With `lotus.local_data = true` this enables the fallback to default pis
     /// (and special pis) texts including upper lower text conversion, if no
     /// local content is found for the received destination.
     /// Default: false.
-    pub destination_fallback: bool,
+    pub allow_fallback: bool,
+    /// With `lotus.local_data = true` this excludes a destination code range.
+    /// If a code in this range is received, the dynamic mode is used as if
+    /// `lotus.local_data` is false.
+    pub dynamic_range: Option<Range<usize>>,
+    /// Sets the line to 0, if [`Lotus::local_data`] is true except in the
+    /// dynamic range.
+    pub no_line_with_local_data: bool,
     /// Internal settings for the upper lower conversion algorithm
     /// ([`crate::ToUpperLowerCase`], [`crate::ToUpperLowerCasePair`]).
     pub upper_lower_config: crate::ToUpperLowerConfig,
@@ -194,8 +197,9 @@ impl Default for System {
     fn default() -> Self {
         Self {
             destination_shift: false,
-            line_fallback: true,
-            destination_fallback: false,
+            allow_fallback: false,
+            dynamic_range: None,
+            no_line_with_local_data: false,
             upper_lower_config: Default::default(),
             chars_with_descender: vec!['<', '=', '>', 'g', 'j', 'p', 'q', 'y'],
             startup_content: Default::default(),
