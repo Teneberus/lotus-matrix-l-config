@@ -31,12 +31,10 @@ pub struct Group {
     pub line_list: Option<Vec<(String, String)>>,
     /// List of specialchar codes and their replacement patterns for the line number.
     pub line_e_list: Option<Vec<(String, String)>>,
-    /// Optional boot content. This content is shown on display start before transition into normal operation.
-    pub startup_content: Option<Content>,
-    /// Local line data that is only used with `system.local_data = true`.
+    /// Local line data that is only used with `lotus.local_data = true`.
     #[serde_as(as = "Option<HashMap<DisplayFromStr, _>>")]
     pub local_line_content: Option<HashMap<usize, Content>>,
-    /// Local specialchar data that is only used with `system.local_data = true`.
+    /// Local specialchar data that is only used with `lotus.local_data = true`.
     #[serde_as(as = "Option<HashMap<DisplayFromStr, _>>")]
     pub local_line_e_content: Option<HashMap<usize, Content>>,
 }
@@ -52,7 +50,6 @@ impl Default for Group {
             change_word_list: Default::default(),
             line_list: Default::default(),
             line_e_list: Default::default(),
-            startup_content: Default::default(),
             local_line_content: Default::default(),
             local_line_e_content: Default::default(),
         }
@@ -84,7 +81,7 @@ impl Group {
     /// Otherwise, the shift is 0.
     ///
     /// The shift is also 0, if one of [`System::destination_shift`] or
-    /// [`System::local_data`] is false, a nonexistent display address is given
+    /// [`Lotus::local_data`] is false, a nonexistent display address is given
     /// or a nonexistent font is defined in the display configuration.
     pub fn get_destination_shift(
         &self,
@@ -92,7 +89,7 @@ impl Group {
         line_char_count: usize,
         display_address: usize,
     ) -> u32 {
-        if !self.system.destination_shift || !self.system.local_data || (line_char_count == 0) {
+        if !self.system.destination_shift || !self.lotus.local_data || (line_char_count == 0) {
             return 0;
         }
 
@@ -121,6 +118,12 @@ impl Group {
 #[derive(Clone, Copy, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(default)]
 pub struct Lotus {
+    /// This enables local data. With this set to true, the station strings of
+    /// the special pis are parsed for preconfigured destination content and
+    /// [`Group::local_line_content`] and [`Group::local_line_e_content`] are
+    /// processed.
+    /// Default: false.
+    pub local_data: bool,
     /// For usability the display configuration and the destination contents are
     /// searched using the display size. Setting this parameter to true, will
     /// match this data based on the address, which is more realistic, but also
@@ -149,26 +152,21 @@ pub struct Lotus {
 }
 
 /// Settings, that are usually a firmware thing and cannot be configured in configuration files.
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[serde_as]
+#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 #[serde(default)]
 pub struct System {
-    /// This enables local data. With this set to true, the station strings of
-    /// the special pis are parsed for preconfigured destination content and
-    /// [`Group::local_line_content`] and [`Group::local_line_e_content`] are
-    /// processed.
-    /// Default: false.
-    pub local_data: bool,
     /// Enables the destination shift of preconfigured destinations if the line
     /// number is smaller than the default width.
     /// Default: false.
     pub destination_shift: bool,
-    /// With `local_data = true` this enables the fallback to default line
+    /// With `lotus.local_data = true` this enables the fallback to default line
     /// strings, if no local line content is found for the received line number.
     /// Default: true.
     pub line_fallback: bool,
-    /// With `local_data = true` this enables the fallback to default pis (and
-    /// special pis) texts including upper lower text conversion, if no local
-    /// content is found for the received destination.
+    /// With `lotus.local_data = true` this enables the fallback to default pis
+    /// (and special pis) texts including upper lower text conversion, if no
+    /// local content is found for the received destination.
     /// Default: false.
     pub destination_fallback: bool,
     /// Internal settings for the upper lower conversion algorithm
@@ -178,19 +176,44 @@ pub struct System {
     ///
     /// Default: `<`, `=`, `>`, `g`, `j`, `p`, `q` and `y`.
     pub chars_with_descender: Vec<char>,
+    /// Optional boot content. This content is shown on display start before
+    /// transition into normal operation.
+    pub startup_content: Option<SystemContent>,
+    /// Optional specialchar overrides. For example, specialchar 99 can show
+    /// system information with this.
+    /// Specialchars in this have a higher priority than other specialchar
+    /// definitions.
+    #[serde_as(as = "Option<HashMap<DisplayFromStr, _>>")]
+    pub line_e_content: Option<HashMap<usize, SystemContent>>,
+    /// Enables the vehicle number if line and specialchar are 0.
+    /// Default: false.
+    pub show_vehicle_number: bool,
 }
 
 impl Default for System {
     fn default() -> Self {
         Self {
-            local_data: false,
             destination_shift: false,
             line_fallback: true,
             destination_fallback: false,
             upper_lower_config: Default::default(),
             chars_with_descender: vec!['<', '=', '>', 'g', 'j', 'p', 'q', 'y'],
+            startup_content: Default::default(),
+            line_e_content: Default::default(),
+            show_vehicle_number: false,
         }
     }
+}
+
+/// System content wrapper with individual cycle times.
+#[derive(Clone, Debug, Default, Deserialize, PartialEq, Serialize)]
+#[serde(default)]
+pub struct SystemContent {
+    /// [`General::cycle_time`] is replaced by these times.
+    /// It is not required to set enough cycle times for all cycles.
+    /// Missing values will use [`General::cycle_time`].
+    pub cycle_times: Vec<f32>,
+    pub content: Content,
 }
 
 /// General settings that apply to all displays.
@@ -238,8 +261,8 @@ impl Default for General {
 /// The fonts that are referenced from displays and local data.
 #[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct Font {
-    pub user_id: u32,
-    pub sub_id: u32,
+    pub user_id: i32,
+    pub sub_id: i32,
     pub height: u32,
     /// The baseline is required for vertical text alignment.
     #[serde(default)]

@@ -50,10 +50,12 @@ pub struct Color {
 #[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(default)]
 pub struct Line {
-    /// Suppress the line number on the display. Only the text is displayed.
+    /// Suppress the line number on the display. Only the destination text is displayed.
     pub suppress: bool,
     /// Line number font. The font needs to exists in the font list in [`crate::group::Group`].
     pub font: usize,
+    /// Optional fallback font, in case the line number does not fit with `font`.
+    pub fallback_font: Option<usize>,
     /// Position of the line number.
     pub place: LinePlace,
     /// Offset for line numbers with 1, 2, 3, 4 digits.
@@ -67,6 +69,7 @@ impl Default for Line {
         Self {
             suppress: false,
             font: 0,
+            fallback_font: None,
             place: Default::default(),
             offset: [3, 2, 1, 1],
             spacing: [0, 2, 1, 1],
@@ -78,6 +81,8 @@ impl Default for Line {
 #[derive(Clone, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(default)]
 pub struct Destination {
+    /// Suppress the destination text on the display. Only the line number is displayed.
+    pub suppress: bool,
     /// Destination fonts.
     pub font: DestinationFont,
     /// Enables the conversion to upper lower case of destination texts.
