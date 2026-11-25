@@ -4,7 +4,7 @@ pub mod display;
 
 use serde::{Deserialize, Serialize};
 use serde_with::{DisplayFromStr, serde_as};
-use std::{collections::HashMap, ops::Range};
+use std::{collections::HashMap, ops::RangeInclusive};
 
 use crate::content::Content;
 
@@ -208,7 +208,7 @@ pub struct System {
     /// With `lotus.local_data = true` this excludes a destination code range.
     /// If a code in this range is received, the dynamic mode is used as if
     /// `lotus.local_data` is false.
-    pub dynamic_range: Option<Range<usize>>,
+    pub dynamic_range: Option<RangeInclusive<usize>>,
     /// Sets the line to 0, if [`Lotus::local_data`] is true except in the
     /// dynamic range.
     pub no_line_with_local_data: bool,
