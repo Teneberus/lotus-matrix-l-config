@@ -73,6 +73,46 @@ impl Group {
         toml::from_slice(s)
     }
 
+    /// Uses the configured matching mode to find the display address needed
+    /// to access the display's configuration and contents.
+    ///
+    /// When `lotus.match_display_address` is enabled, returns `Some(address)`
+    /// if the address exists or `None` otherwise.
+    ///
+    /// When `lotus.match_display_address` is disabled, selects among displays
+    /// with the given `width` and `height`, ordered by ascending address.
+    /// The `index` is zero-based. If it exceeds the last valid index, returns
+    /// the highest matching address. If no display matches, returns `None`.
+    pub fn find_display_address(
+        &self,
+        address: usize,
+        width: u32,
+        height: u32,
+        index: usize,
+    ) -> Option<usize> {
+        if self.lotus.match_display_address {
+            if self.display.contains_key(&address) {
+                Some(address)
+            } else {
+                None
+            }
+        } else {
+            let mut matching_addresses: Vec<usize> = self
+                .display
+                .iter()
+                .filter_map(|(&address, display)| {
+                    (display.size.width == width && display.size.height == height)
+                        .then_some(address)
+                })
+                .collect();
+
+            matching_addresses.sort_unstable();
+
+            let index = index.min(matching_addresses.len().saturating_sub(1));
+            matching_addresses.get(index).copied()
+        }
+    }
+
     /// Returns the destination shift to the left for local destination data.
     ///
     /// If the line number is not empty and the width is smaller than the

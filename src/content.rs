@@ -82,6 +82,36 @@ impl Address {
 
         expanded
     }
+
+    /// Create text content without inversion, color or anything else.
+    /// Just a simple string.
+    ///
+    /// More strings can be added with [`Cycle::add_string`].
+    pub fn new_string(string: &str, font_index: usize, x: i32, y: i32, spacing: i32) -> Self {
+        Self {
+            inverted: false,
+            cycles: vec![Cycle {
+                inverted: false,
+                release_locks: false,
+                color: None,
+                elements: vec![Element::Text {
+                    value: string.to_owned(),
+                    font: font_index,
+                    spacing,
+                    position: Position {
+                        h_align: HorizontalAlignment::None,
+                        v_align: VerticalAlignment::None,
+                        x,
+                        y,
+                        locked: false,
+                    },
+                    stroke: None,
+                    color: None,
+                    scroll_field: None,
+                }],
+            }],
+        }
+    }
 }
 
 /// One display cycle. The display loops through the cycles.
@@ -107,6 +137,27 @@ pub struct Cycle {
     pub elements: Vec<Element>,
 }
 
+impl Cycle {
+    /// Adds a text element to the cycle.
+    pub fn add_string(&mut self, string: &str, font_index: usize, x: i32, y: i32, spacing: i32) {
+        self.elements.push(Element::Text {
+            value: string.to_owned(),
+            font: font_index,
+            spacing,
+            position: Position {
+                h_align: HorizontalAlignment::None,
+                v_align: VerticalAlignment::None,
+                x,
+                y,
+                locked: false,
+            },
+            stroke: None,
+            color: None,
+            scroll_field: None,
+        });
+    }
+}
+
 /// Contains references to all elements of a cycle after processing the `locked`
 /// and `release_locks` parameters (created with [`Address::expanded_cycles()`]).
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -117,6 +168,49 @@ pub struct ExpandedCycle<'a> {
     pub color: Option<Color>,
     /// References to all elements that are visible on this cycle.
     pub elements: Vec<&'a Element>,
+}
+
+impl<'a> ExpandedCycle<'a> {
+    /// Merges the cycles in lockstep until both sequences repeat.
+    ///
+    /// For each merged pair, the color from the first cycle replaces the
+    /// color from the second cycle, even if the first color is `None`.
+    ///
+    /// If either sequence is empty, returns a copy of the other sequence.
+    /// Merging two nonempty sequences returns an error at 50 or more cycles.
+    pub fn merge(first: &[Self], second: &[Self]) -> Result<Vec<Self>, &'static str> {
+        const CYCLE_LIMIT: usize = 50;
+
+        if first.is_empty() {
+            return Ok(second.to_vec());
+        }
+        if second.is_empty() {
+            return Ok(first.to_vec());
+        }
+
+        let cycle_count = (1..CYCLE_LIMIT)
+            .find(|&count| count % first.len() == 0 && count % second.len() == 0)
+            .ok_or("Merged sequence would contain 50 or more cycles")?;
+
+        let merged = first
+            .iter()
+            .cycle()
+            .zip(second.iter().cycle())
+            .take(cycle_count)
+            .map(|(first, second)| Self {
+                inverted: first.inverted ^ second.inverted,
+                color: first.color,
+                elements: first
+                    .elements
+                    .iter()
+                    .chain(&second.elements)
+                    .copied()
+                    .collect(),
+            })
+            .collect();
+
+        Ok(merged)
+    }
 }
 
 /// Various elements with properties, that are positioned on the display.
