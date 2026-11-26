@@ -73,6 +73,63 @@ impl Group {
         toml::from_slice(s)
     }
 
+    /// Formats the line using the first matching pattern in [`Self::line_list`].
+    ///
+    /// Returns `None` if the list is absent or no pattern matches.
+    pub fn format_line(&self, line: u32, specialchar: u32) -> Option<String> {
+        let list = self.line_list.as_deref()?;
+        let line_key = line.to_string();
+        let template = first_line_template(list, &line_key)?;
+        let line_digits = if line == 0 { "" } else { &line_key };
+        render_line_template(template, line_digits, &specialchar.to_string())
+    }
+
+    /// Formats the line using the first matching specialchar in [`Self::line_e_list`].
+    ///
+    /// Returns `None` for specialchar zero, an absent list, or a missing match.
+    pub fn format_line_e(&self, line: u32, specialchar: u32) -> Option<String> {
+        let list = self.line_e_list.as_deref()?;
+        if specialchar == 0 {
+            return None;
+        }
+
+        let specialchar_key = specialchar.to_string();
+        let template = first_line_template(list, &specialchar_key)?;
+        let line_digits = if line == 0 {
+            String::new()
+        } else {
+            line.to_string()
+        };
+        render_line_template(template, &line_digits, &specialchar_key)
+    }
+
+    /// Applies the system's line zero trimming options around the first
+    /// character that is not an ASCII digit.
+    ///
+    /// Leading trimming removes zeros immediately after that character.
+    /// Trailing trimming removes zeros immediately before it.
+    /// A string made entirely of digits is returned as-is.
+    pub fn trim_line_e_zeros(&self, text: &str) -> String {
+        let Some((index, marker)) = text.char_indices().find(|(_, ch)| !ch.is_ascii_digit()) else {
+            return text.to_owned();
+        };
+        let (before, rest) = text.split_at(index);
+        let (marker, after) = rest.split_at(marker.len_utf8());
+
+        let before = if self.system.cut_trailing_line_e_zeros {
+            before.trim_end_matches('0')
+        } else {
+            before
+        };
+        let after = if self.system.cut_leading_line_e_zeros {
+            after.trim_start_matches('0')
+        } else {
+            after
+        };
+
+        [before, marker, after].concat()
+    }
+
     /// Uses the configured matching mode to find the display address needed
     /// to access the display's configuration and contents.
     ///
@@ -152,6 +209,60 @@ impl Group {
             .saturating_sub(1)
             / 2
     }
+}
+
+/// Finds the first matching pattern in the (pattern, template) list and returns the
+/// found template or None if none is found.
+/// Returns the template from the first pattern that matches the key.
+///
+/// Patterns must have the same length as the key. Each `x` or `X`
+/// matches one digit, and all other characters must match literally.
+fn first_line_template<'a>(list: &'a [(String, String)], key: &str) -> Option<&'a str> {
+    list.iter()
+        .find(|(pattern, _)| {
+            pattern.len() == key.len()
+                && pattern
+                    .bytes()
+                    .zip(key.bytes())
+                    .all(|(pattern, digit)| matches!(pattern, b'x' | b'X') || pattern == digit)
+        })
+        .map(|(_, template)| template.as_str())
+}
+
+/// Renders line and specialchar digits into a replacement template.
+///
+/// A digit after `#` selects a line digit, while a digit after `*`
+/// selects a specialchar digit. Index zero is the rightmost digit.
+/// Missing digits are skipped. A marker followed by another marker
+/// outputs the second marker literally.
+fn render_line_template(template: &str, line: &str, specialchar: &str) -> Option<String> {
+    let mut text = String::new();
+    let mut chars = template.chars();
+
+    while let Some(ch) = chars.next() {
+        if !matches!(ch, '#' | '*') {
+            text.push(ch);
+            continue;
+        }
+
+        let Some(next) = chars.next() else {
+            break;
+        };
+
+        match next {
+            '#' | '*' => text.push(next),
+            '0'..='9' => {
+                let digits = if ch == '#' { line } else { specialchar };
+                let index = (next as u8 - b'0') as usize;
+                if let Some(digit) = digits.bytes().rev().nth(index) {
+                    text.push(char::from(digit));
+                }
+            }
+            _ => {}
+        }
+    }
+
+    Some(text)
 }
 
 /// LOTUS specific settings that are relevant for the simulation.
