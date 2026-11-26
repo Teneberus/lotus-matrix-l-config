@@ -228,6 +228,15 @@ pub struct System {
     /// definitions.
     #[serde_as(as = "Option<HashMap<DisplayFromStr, _>>")]
     pub line_e_content: Option<HashMap<usize, SystemContent>>,
+    /// Limit incoming line number length.
+    /// Default: 4.
+    pub max_line_digits: u32,
+    /// Leading zeros after non-digits chars are cut (M01 -> M1).
+    /// Default: false.
+    pub cut_leading_line_e_zeros: bool,
+    /// Trailing zeros before non-digit chars are cut (50N -> 5N).
+    /// Default: false.
+    pub cut_trailing_line_e_zeros: bool,
     /// Enables the vehicle number if line and specialchar are 0.
     /// Default: false.
     pub show_vehicle_number: bool,
@@ -244,6 +253,9 @@ impl Default for System {
             chars_with_descender: vec!['<', '=', '>', 'g', 'j', 'p', 'q', 'y'],
             startup_content: Default::default(),
             line_e_content: Default::default(),
+            max_line_digits: 4,
+            cut_leading_line_e_zeros: false,
+            cut_trailing_line_e_zeros: false,
             show_vehicle_number: false,
         }
     }
