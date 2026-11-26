@@ -48,7 +48,8 @@ impl Default for ToUpperLowerConfig {
 /// ```
 /// use lotus_matrix_l_config::{ToUpperLowerCase, ToUpperLowerConfig};
 ///
-/// let config = ToUpperLowerConfig::default();
+/// let mut config = ToUpperLowerConfig::default();
+/// config.start_with_uppercase[0] = true;
 /// assert_eq!("bERLIN".to_upper_lower_case(&config, None, false, true), "Berlin");
 /// ```
 pub trait ToUpperLowerCase {
@@ -110,7 +111,8 @@ impl<T: AsRef<str> + ?Sized> ToUpperLowerCase for T {
 /// ```
 /// use lotus_matrix_l_config::{ToUpperLowerCasePair, ToUpperLowerConfig};
 ///
-/// let config = ToUpperLowerConfig::default();
+/// let mut config = ToUpperLowerConfig::default();
+/// config.start_with_uppercase[0] = true;
 /// assert_eq!(
 ///     ["bERLIN", "tEGEL"].to_upper_lower_case(&config, None, false, true),
 ///     ["Berlin", "tegel"],
