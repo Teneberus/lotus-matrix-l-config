@@ -60,15 +60,15 @@ pub struct Line {
     /// `font`.
     /// Only if [`super::Lotus::local_data`] is false or
     /// [`super::System::allow_fallback`] is true and a fallback is active or if
-    /// the destination is in the [`super::System::dynamic_range`].
+    /// the destination is in one of the [`super::System::dynamic_ranges`].
     pub alternative_font: Option<usize>,
     /// Position of the line number.
     pub place: LinePlace,
     /// Offset for line numbers with 1, 2, 3, 4 digits.
-    pub offset: [u32; 4],
+    pub offsets: [u32; 4],
     /// Spacing for line numbers with 1, 2, 3, 4 digits. First value should be
     /// 0.
-    pub spacing: [u32; 4],
+    pub spacings: [u32; 4],
 }
 
 impl Default for Line {
@@ -78,8 +78,8 @@ impl Default for Line {
             font: 0,
             alternative_font: None,
             place: Default::default(),
-            offset: [3, 2, 1, 1],
-            spacing: [0, 2, 1, 1],
+            offsets: [3, 2, 1, 1],
+            spacings: [0, 2, 1, 1],
         }
     }
 }
@@ -91,9 +91,9 @@ pub struct Destination {
     /// Suppress the destination text on the display. Only the line number is displayed.
     pub suppress: bool,
     /// Destination fonts.
-    pub font: DestinationFont,
+    pub fonts: DestinationFonts,
     /// Enables the conversion to upper lower case of destination texts.
-    pub upper_lower_convert: UpperLowerConvert,
+    pub convert_upper_lower: UpperLowerConvert,
 }
 
 /// Display orientation (Front or Side).
@@ -126,7 +126,7 @@ pub enum LinePlace {
 /// The fonts needs to exists in the font list in [`crate::group::Group`].
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(default)]
-pub struct DestinationFont {
+pub struct DestinationFonts {
     /// Fonts for a single line text. Usually a set of 4 fonts.
     /// The order needs to be from largest to smallest font.
     pub one_line: Vec<usize>,
@@ -138,7 +138,7 @@ pub struct DestinationFont {
     pub two_lines_lo: Vec<usize>,
 }
 
-impl Default for DestinationFont {
+impl Default for DestinationFonts {
     fn default() -> Self {
         Self {
             one_line: vec![0],

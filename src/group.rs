@@ -21,10 +21,10 @@ pub struct Group {
     pub general: General,
     /// The fonts that are referenced from displays and local data.
     #[serde_as(as = "HashMap<DisplayFromStr, _>")]
-    pub font: HashMap<usize, Font>,
+    pub fonts: HashMap<usize, Font>,
     /// Display configurations including size, fonts references and formatting options.
     #[serde_as(as = "HashMap<DisplayFromStr, _>")]
-    pub display: HashMap<usize, Display>,
+    pub displays: HashMap<usize, Display>,
     /// List of words that are replaced if the upper lower conversion is enabled in the display configuration.
     pub change_word_list: Option<Vec<(String, String)>>,
     /// List of line patterns with replacement strings.
@@ -33,10 +33,10 @@ pub struct Group {
     pub line_e_list: Option<Vec<(String, String)>>,
     /// Local line data that is only used with `lotus.local_data = true`.
     #[serde_as(as = "Option<HashMap<DisplayFromStr, _>>")]
-    pub local_line_content: Option<HashMap<usize, Content>>,
+    pub local_line_data: Option<HashMap<usize, Content>>,
     /// Local specialchar data that is only used with `lotus.local_data = true`.
     #[serde_as(as = "Option<HashMap<DisplayFromStr, _>>")]
-    pub local_line_e_content: Option<HashMap<usize, Content>>,
+    pub local_line_e_data: Option<HashMap<usize, Content>>,
 }
 
 impl Default for Group {
@@ -45,32 +45,38 @@ impl Default for Group {
             lotus: Default::default(),
             system: Default::default(),
             general: Default::default(),
-            font: HashMap::from([(0, Default::default())]),
-            display: Default::default(),
+            fonts: HashMap::from([(0, Default::default())]),
+            displays: Default::default(),
             change_word_list: Default::default(),
             line_list: Default::default(),
             line_e_list: Default::default(),
-            local_line_content: Default::default(),
-            local_line_e_content: Default::default(),
+            local_line_data: Default::default(),
+            local_line_e_data: Default::default(),
         }
     }
 }
 
 impl Group {
-    /// Wrapper for `toml::from_str()`.
-    pub fn from_toml_str<'de, T>(s: &'de str) -> Result<T, toml::de::Error>
-    where
-        T: serde::de::Deserialize<'de>,
-    {
-        toml::from_str(s)
+    /// Parses TOML first, then JSON if TOML deserialization fails.
+    pub fn from_str<'de, T: Deserialize<'de>>(s: &'de str) -> Result<T, crate::DeserializeError> {
+        Self::from_slice(s.as_bytes())
     }
 
-    /// Wrapper for `toml::from_slice()`.
-    pub fn from_toml_slice<'de, T>(s: &'de [u8]) -> Result<T, toml::de::Error>
-    where
-        T: serde::de::Deserialize<'de>,
-    {
-        toml::from_slice(s)
+    /// Parses a byte slice as TOML first, then JSON.
+    pub fn from_slice<'de, T: Deserialize<'de>>(
+        s: &'de [u8],
+    ) -> Result<T, crate::DeserializeError> {
+        crate::deserialize_config(s)
+    }
+
+    /// Serializes the configuration as TOML.
+    pub fn to_toml(&self) -> Result<String, toml::ser::Error> {
+        toml::to_string(self)
+    }
+
+    /// Serializes the configuration as JSON.
+    pub fn to_json(&self) -> Result<String, serde_json::Error> {
+        serde_json::to_string_pretty(self)
     }
 
     /// Formats the line using the first matching pattern in [`Self::line_list`].
@@ -148,14 +154,14 @@ impl Group {
         index: usize,
     ) -> Option<usize> {
         if self.lotus.match_display_address {
-            if self.display.contains_key(&address) {
+            if self.displays.contains_key(&address) {
                 Some(address)
             } else {
                 None
             }
         } else {
             let mut matching_addresses: Vec<usize> = self
-                .display
+                .displays
                 .iter()
                 .filter_map(|(&address, display)| {
                     (display.size.width == width && display.size.height == height)
@@ -190,18 +196,18 @@ impl Group {
             return 0;
         }
 
-        let Some(display) = self.display.get(&display_address) else {
+        let Some(display) = self.displays.get(&display_address) else {
             return 0;
         };
 
-        let Some(font) = self.font.get(&display.line.font) else {
+        let Some(font) = self.fonts.get(&display.line.font) else {
             return 0;
         };
 
-        let default_width = self.general.default_line_digit_count * font.zero_width
+        let default_width = self.general.default_line_digit_count * font.digit_width
             + (self.general.default_line_digit_count - 1)
-                * display.line.spacing[line_char_count.saturating_sub(1) & 3]
-            + display.line.offset
+                * display.line.spacings[line_char_count.saturating_sub(1) & 3]
+            + display.line.offsets
                 [(self.general.default_line_digit_count as usize).saturating_sub(1) & 3];
 
         default_width
@@ -271,7 +277,7 @@ fn render_line_template(template: &str, line: &str, specialchar: &str) -> Option
 pub struct Lotus {
     /// This enables local data. With this set to true, the station strings of
     /// the special pis are parsed for preconfigured destination content and
-    /// [`Group::local_line_content`] and [`Group::local_line_e_content`] are
+    /// [`Group::local_line_data`] and [`Group::local_line_e_data`] are
     /// processed.
     /// Default: false.
     pub local_data: bool,
@@ -316,10 +322,10 @@ pub struct System {
     /// local content is found for the received destination.
     /// Default: false.
     pub allow_fallback: bool,
-    /// With `lotus.local_data = true` this excludes a destination code range.
-    /// If a code in this range is received, the dynamic mode is used as if
-    /// `lotus.local_data` is false.
-    pub dynamic_range: Option<RangeInclusive<usize>>,
+    /// With `lotus.local_data = true` this excludes destination code ranges.
+    /// If a code in one of these ranges is received, the dynamic mode is used
+    /// as if `lotus.local_data` is false.
+    pub dynamic_ranges: Vec<RangeInclusive<usize>>,
     /// Sets the line to 0, if [`Lotus::local_data`] is true except in the
     /// dynamic range.
     pub no_line_with_local_data: bool,
@@ -358,7 +364,7 @@ impl Default for System {
         Self {
             destination_shift: false,
             allow_fallback: false,
-            dynamic_range: None,
+            dynamic_ranges: Default::default(),
             no_line_with_local_data: false,
             upper_lower_config: Default::default(),
             chars_with_descender: vec!['<', '=', '>', 'g', 'j', 'p', 'q', 'y'],
@@ -438,7 +444,7 @@ pub struct Font {
     /// calculate the default line number width together with
     /// [`General::default_line_digit_count`].
     #[serde(default)]
-    pub zero_width: u32,
+    pub digit_width: u32,
 }
 
 impl Default for Font {
@@ -448,7 +454,7 @@ impl Default for Font {
             sub_id: 457430500,
             height: 8,
             baseline: 7,
-            zero_width: 4,
+            digit_width: 4,
         }
     }
 }

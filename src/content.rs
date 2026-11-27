@@ -1,5 +1,5 @@
-//! The content for [`crate::group::Group::local_line_content`],
-//! [`crate::group::Group::local_line_e_content`] and for the local destination
+//! The content for [`crate::group::Group::local_line_data`],
+//! [`crate::group::Group::local_line_e_data`] and for the local destination
 //! content in the station strings of the special pis.
 
 use serde::{Deserialize, Serialize};
@@ -13,24 +13,30 @@ use std::collections::HashMap;
 pub struct Content {
     /// Contains all content for the displays with their address as key.
     #[serde_as(as = "HashMap<DisplayFromStr, _>")]
-    pub display: HashMap<usize, Display>,
+    pub displays: HashMap<usize, Display>,
 }
 
 impl Content {
-    /// Wrapper for `toml::from_str()`.
-    pub fn from_toml_str<'de, T>(s: &'de str) -> Result<T, toml::de::Error>
-    where
-        T: serde::de::Deserialize<'de>,
-    {
-        toml::from_str(s)
+    /// Parses TOML first, then JSON if TOML deserialization fails.
+    pub fn from_str<'de, T: Deserialize<'de>>(s: &'de str) -> Result<T, crate::DeserializeError> {
+        Self::from_slice(s.as_bytes())
     }
 
-    /// Wrapper for `toml::from_slice()`.
-    pub fn from_toml_slice<'de, T>(s: &'de [u8]) -> Result<T, toml::de::Error>
-    where
-        T: serde::de::Deserialize<'de>,
-    {
-        toml::from_slice(s)
+    /// Parses a byte slice as TOML first, then JSON.
+    pub fn from_slice<'de, T: Deserialize<'de>>(
+        s: &'de [u8],
+    ) -> Result<T, crate::DeserializeError> {
+        crate::deserialize_config(s)
+    }
+
+    /// Serializes the configuration as TOML.
+    pub fn to_toml(&self) -> Result<String, toml::ser::Error> {
+        toml::to_string(self)
+    }
+
+    /// Serializes the configuration as JSON.
+    pub fn to_json(&self) -> Result<String, serde_json::Error> {
+        serde_json::to_string_pretty(self)
     }
 }
 
