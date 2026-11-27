@@ -30,13 +30,13 @@
 //!
 //! let group = Group::default();
 //! let json = group.to_json()?;
-//! assert_eq!(Group::from_str::<Group>(&json)?, group);
+//! assert_eq!(Group::from_str(&json)?, group);
 //!
 //! let content = Content::default();
 //! let toml = content.to_toml()?;
-//! assert_eq!(Content::from_slice::<Content>(toml.as_bytes())?, content);
+//! assert_eq!(Content::from_slice(toml.as_bytes())?, content);
 //!
-//! let error = Content::from_str::<Content>("{").unwrap_err().to_string();
+//! let error = Content::from_str("{").unwrap_err().to_string();
 //! assert!(error.contains("TOML:") && error.contains("JSON:"));
 //! # Ok::<(), Box<dyn std::error::Error>>(())
 //! ```

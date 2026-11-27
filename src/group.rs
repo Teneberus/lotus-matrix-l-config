@@ -61,14 +61,12 @@ impl Default for Group {
 
 impl Group {
     /// Parses TOML first, then JSON if TOML deserialization fails.
-    pub fn from_str<'de, T: Deserialize<'de>>(s: &'de str) -> Result<T, crate::DeserializeError> {
+    pub fn from_str(s: &str) -> Result<Self, crate::DeserializeError> {
         Self::from_slice(s.as_bytes())
     }
 
     /// Parses a byte slice as TOML first, then JSON.
-    pub fn from_slice<'de, T: Deserialize<'de>>(
-        s: &'de [u8],
-    ) -> Result<T, crate::DeserializeError> {
+    pub fn from_slice(s: &[u8]) -> Result<Self, crate::DeserializeError> {
         crate::deserialize_config(s)
     }
 
