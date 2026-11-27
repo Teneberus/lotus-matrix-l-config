@@ -2,7 +2,10 @@
 
 pub mod display;
 
-use serde::{Deserialize, Serialize};
+#[cfg(test)]
+mod tests;
+
+use serde::{Deserialize, Deserializer, Serialize};
 use serde_with::{DisplayFromStr, serde_as};
 use std::{collections::HashMap, ops::RangeInclusive};
 
@@ -325,7 +328,9 @@ pub struct System {
     /// With `lotus.local_data = true` this excludes destination code ranges.
     /// If a code in one of these ranges is received, the dynamic mode is used
     /// as if `lotus.local_data` is false.
-    pub dynamic_ranges: Vec<RangeInclusive<usize>>,
+    /// Deserialization sorts the ranges and merges overlapping or adjacent ranges.
+    #[serde(deserialize_with = "deserialize_dynamic_destination_ranges")]
+    pub dynamic_destination_ranges: Vec<RangeInclusive<usize>>,
     /// Sets the line to 0, if [`Lotus::local_data`] is true except in the
     /// dynamic range.
     pub no_line_with_local_data: bool,
@@ -364,7 +369,7 @@ impl Default for System {
         Self {
             destination_shift: false,
             allow_fallback: false,
-            dynamic_ranges: Default::default(),
+            dynamic_destination_ranges: Default::default(),
             no_line_with_local_data: false,
             upper_lower_config: Default::default(),
             chars_with_descender: vec!['<', '=', '>', 'g', 'j', 'p', 'q', 'y'],
@@ -376,6 +381,40 @@ impl Default for System {
             show_vehicle_number: false,
         }
     }
+}
+
+impl System {
+    /// Returns whether the destination code is in any configured dynamic range.
+    ///
+    /// The ranges must be sorted and nonoverlapping, as produced by deserialization.
+    pub fn dynamic_ranges_contain(&self, destination: usize) -> bool {
+        let ranges = &self.dynamic_destination_ranges;
+        let index = ranges.partition_point(|range| *range.start() <= destination);
+        index > 0 && ranges[index - 1].contains(&destination)
+    }
+}
+
+fn deserialize_dynamic_destination_ranges<'de, D>(
+    deserializer: D,
+) -> Result<Vec<RangeInclusive<usize>>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let mut ranges = Vec::<RangeInclusive<usize>>::deserialize(deserializer)?;
+    ranges.retain(|range| !range.is_empty());
+    ranges.sort_unstable_by_key(|range| *range.start());
+
+    let mut merged: Vec<RangeInclusive<usize>> = Vec::new();
+    for range in ranges {
+        if let Some(last) = merged.last_mut() {
+            if *range.start() <= last.end().saturating_add(1) {
+                *last = *last.start()..=(*last.end()).max(*range.end());
+                continue;
+            }
+        }
+        merged.push(range);
+    }
+    Ok(merged)
 }
 
 /// System content wrapper with individual cycle times.
