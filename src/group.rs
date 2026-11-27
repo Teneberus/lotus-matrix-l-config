@@ -332,13 +332,13 @@ pub struct System {
     pub chars_with_descender: Vec<char>,
     /// Optional boot content. This content is shown on display start before
     /// transition into normal operation.
-    pub startup_content: Option<SystemContent>,
+    pub startup: Option<SystemContent>,
     /// Optional specialchar overrides. For example, specialchar 99 can show
     /// system information with this.
     /// Specialchars in this have a higher priority than other specialchar
     /// definitions.
     #[serde_as(as = "Option<HashMap<DisplayFromStr, _>>")]
-    pub line_e_content: Option<HashMap<usize, SystemContent>>,
+    pub line_e_overrides: Option<HashMap<usize, SystemContent>>,
     /// Limit incoming line number length.
     /// Default: 4.
     pub max_line_digits: u32,
@@ -362,8 +362,8 @@ impl Default for System {
             no_line_with_local_data: false,
             upper_lower_config: Default::default(),
             chars_with_descender: vec!['<', '=', '>', 'g', 'j', 'p', 'q', 'y'],
-            startup_content: Default::default(),
-            line_e_content: Default::default(),
+            startup: Default::default(),
+            line_e_overrides: Default::default(),
             max_line_digits: 4,
             cut_leading_line_e_zeros: false,
             cut_trailing_line_e_zeros: false,
@@ -468,7 +468,7 @@ pub struct Display {
     #[serde(default)]
     pub destination: display::Destination,
     /// Minimum spacing between line number and destination text.
-    #[serde(default = "get_display_line_destination_spacing")]
+    #[serde(default = "default_line_destination_spacing")]
     pub line_destination_spacing: u32,
     /// Display orientation (Front or Side).
     #[serde(default)]
@@ -482,12 +482,12 @@ impl Default for Display {
             color: Default::default(),
             line: Default::default(),
             destination: Default::default(),
-            line_destination_spacing: get_display_line_destination_spacing(),
+            line_destination_spacing: default_line_destination_spacing(),
             orientation: Default::default(),
         }
     }
 }
 
-fn get_display_line_destination_spacing() -> u32 {
+fn default_line_destination_spacing() -> u32 {
     3
 }

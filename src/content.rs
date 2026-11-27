@@ -4,16 +4,16 @@
 
 use serde::{Deserialize, Serialize};
 use serde_with::{DisplayFromStr, serde_as};
-use std::{cmp::max, collections::HashMap, fmt::Display};
+use std::collections::HashMap;
 
 /// This is the main struct for the display content.
 #[serde_as]
 #[derive(Clone, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(default)]
 pub struct Content {
-    /// An address contains all content for the display with this address.
+    /// Contains all content for the displays with their address as key.
     #[serde_as(as = "HashMap<DisplayFromStr, _>")]
-    pub address: HashMap<usize, Address>,
+    pub display: HashMap<usize, Display>,
 }
 
 impl Content {
@@ -34,19 +34,19 @@ impl Content {
     }
 }
 
-/// An address contains all content for the display with this address.
+/// Contains all content for the display.
 #[derive(Clone, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(default)]
-pub struct Address {
+pub struct Display {
     /// Display inversion. Is used together with [`Cycle::inverted`] as
-    /// `address.inverted ^ cycle.inverted`.
+    /// `display.inverted ^ cycle.inverted`.
     pub inverted: bool,
     /// List of cycles. Static content has exactly one cycle.
     /// With more than on cycle, the display loops through all cycles.
     pub cycles: Vec<Cycle>,
 }
 
-impl Address {
+impl Display {
     /// Returns each cycle with its effective inversion, color, and elements.
     ///
     /// Inherited elements come before the cycle's own elements. A cycle with
@@ -87,7 +87,7 @@ impl Address {
     /// Just a simple string.
     ///
     /// More strings can be added with [`Cycle::add_string`].
-    pub fn new_string(string: &str, font_index: usize, x: i32, y: i32, spacing: i32) -> Self {
+    pub fn from_string(string: &str, font_index: usize, x: i32, y: i32, spacing: i32) -> Self {
         Self {
             inverted: false,
             cycles: vec![Cycle {
@@ -119,7 +119,7 @@ impl Address {
 #[serde(default)]
 pub struct Cycle {
     /// Display inversion of this cycle. The effective inversion also depends on
-    /// [`Address::inverted`].
+    /// [`Display::inverted`].
     pub inverted: bool,
     /// Elements can be locked ([`Position::locked`]).
     /// In that case they are visible on all following cycles until this
@@ -159,7 +159,7 @@ impl Cycle {
 }
 
 /// Contains references to all elements of a cycle after processing the `locked`
-/// and `release_locks` parameters (created with [`Address::expanded_cycles()`]).
+/// and `release_locks` parameters (created with [`Display::expanded_cycles()`]).
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ExpandedCycle<'a> {
     /// Effective inversion of the display.
@@ -311,7 +311,7 @@ impl Position {
                 if remaining_width == 0 {
                     text_start
                 } else {
-                    text_start + max(1, remaining_width / 2)
+                    text_start + (remaining_width / 2).max(1)
                 }
             }
             HorizontalAlignment::TextRight => display_width - text_width,
@@ -355,7 +355,7 @@ pub enum HorizontalAlignment {
     Center,
 }
 
-impl Display for HorizontalAlignment {
+impl std::fmt::Display for HorizontalAlignment {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             HorizontalAlignment::None => write!(f, "None"),
@@ -381,7 +381,7 @@ pub enum VerticalAlignment {
     Bottom,
 }
 
-impl Display for VerticalAlignment {
+impl std::fmt::Display for VerticalAlignment {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             VerticalAlignment::None => write!(f, "None"),
@@ -401,7 +401,7 @@ pub struct Color {
     pub b: u8,
 }
 
-impl Display for Color {
+impl std::fmt::Display for Color {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "#{:02X}{:02X}{:02X}", self.r, self.g, self.b)
     }
@@ -440,7 +440,7 @@ pub enum Direction {
     LeftToRight,
 }
 
-impl Display for Direction {
+impl std::fmt::Display for Direction {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Direction::RightToLeft => write!(f, "Right to left"),
