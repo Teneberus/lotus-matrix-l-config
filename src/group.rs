@@ -150,6 +150,8 @@ impl Group {
     pub fn find_display_address(
         &self,
         address: usize,
+        line_width: u32,
+        line_height: u32,
         width: u32,
         height: u32,
         index: usize,
@@ -165,7 +167,10 @@ impl Group {
                 .displays
                 .iter()
                 .filter_map(|(&address, display)| {
-                    (display.size.width == width && display.size.height == height)
+                    (display.size.line_width == line_width
+                        && display.size.line_height == line_height
+                        && display.size.width == width
+                        && display.size.height == height)
                         .then_some(address)
                 })
                 .collect();
@@ -357,6 +362,13 @@ pub struct System {
     /// Trailing zeros before non-digit chars are cut (50N -> 5N).
     /// Default: false.
     pub cut_trailing_line_e_zeros: bool,
+    /// If the field width is below this value the line number is aligned in the
+    /// center.
+    /// Default: 49.
+    pub line_alignment_max_width: u32,
+    /// Maximum allowed spacing if the line number is aligned in the center.
+    /// Default: 3.
+    pub line_alignment_max_spacing: u32,
     /// Enables the vehicle number if line and specialchar are 0.
     /// Default: false.
     pub show_vehicle_number: bool,
@@ -377,6 +389,8 @@ impl Default for System {
             cut_leading_line_e_zeros: false,
             cut_trailing_line_e_zeros: false,
             show_vehicle_number: false,
+            line_alignment_max_width: 49,
+            line_alignment_max_spacing: 3,
         }
     }
 }
