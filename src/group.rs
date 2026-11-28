@@ -297,6 +297,15 @@ pub struct Lotus {
     ///
     /// Default: false.
     pub match_display_address: bool,
+    /// For usability the default display configuration is used if no matching
+    /// display is found in this config.
+    /// This behavior can be disabled with this parameter.
+    ///
+    /// Be aware, that displays in LOTUS, that find no configuration or data,
+    /// will stay empty.
+    ///
+    /// Default: false.
+    pub prohibit_config_fallback: bool,
     /// If set to true, all texts read from pis (and special pis) that are not
     /// preconfigured, are converted to IBIS conmpliant uppercase strings.
     ///
